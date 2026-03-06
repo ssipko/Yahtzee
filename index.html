@@ -2,733 +2,473 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Yahtzee Dice Roller</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Yahtzee</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Special+Elite&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --felt: #1a4a2e;
-    --felt-light: #205535;
-    --felt-dark: #122d1c;
-    --gold: #c9a84c;
-    --gold-light: #e8c96a;
-    --gold-dark: #8a6a1e;
-    --cream: #f5eed8;
-    --red: #8b1a1a;
-    --die-bg: #faf6ee;
-    --die-shadow: #c9b98a;
-    --locked-glow: #c9a84c;
-  }
-
-  body {
-    background-color: var(--felt-dark);
-    background-image:
-      radial-gradient(ellipse at 50% 0%, #2a6640 0%, transparent 60%),
-      repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    padding: 20px 16px 40px;
-    font-family: 'Crimson Text', serif;
-    color: var(--cream);
-    overflow-x: hidden;
-  }
-
-  /* Felt texture overlay */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='none'/%3E%3Ccircle cx='1' cy='1' r='0.5' fill='rgba(255,255,255,0.015)'/%3E%3Ccircle cx='3' cy='3' r='0.5' fill='rgba(255,255,255,0.015)'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .wrapper { position: relative; z-index: 1; width: 100%; max-width: 560px; }
-
-  /* Header */
-  header {
-    text-align: center;
-    margin-bottom: 24px;
-  }
-  .title-ornament {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    margin-bottom: 4px;
-  }
-  .title-ornament::before,
-  .title-ornament::after {
-    content: '';
-    height: 1px;
-    width: 60px;
-    background: linear-gradient(to right, transparent, var(--gold));
-  }
-  .title-ornament::after {
-    background: linear-gradient(to left, transparent, var(--gold));
-  }
-  h1 {
-    font-family: 'Playfair Display', serif;
-    font-size: clamp(2.2rem, 8vw, 3.2rem);
-    font-weight: 900;
-    letter-spacing: 0.08em;
-    background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold) 50%, var(--gold-dark) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-transform: uppercase;
-    line-height: 1;
-  }
-  .subtitle {
-    font-size: 0.85rem;
-    color: rgba(201,168,76,0.6);
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    margin-top: 4px;
-  }
-
-
-
-  /* Table surface */
-  .table-surface {
-    background: radial-gradient(ellipse at 50% 30%, var(--felt-light) 0%, var(--felt) 60%, var(--felt-dark) 100%);
-    border-radius: 24px;
-    padding: 28px 20px 24px;
-    border: 2px solid rgba(201,168,76,0.25);
-    box-shadow:
-      0 0 0 6px rgba(0,0,0,0.3),
-      0 0 0 8px rgba(201,168,76,0.1),
-      0 20px 60px rgba(0,0,0,0.6),
-      inset 0 1px 0 rgba(255,255,255,0.05);
-    position: relative;
-    overflow: hidden;
-  }
-  .table-surface::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: repeating-linear-gradient(
-      0deg, transparent, transparent 3px, rgba(0,0,0,0.02) 3px, rgba(0,0,0,0.02) 4px
-    ), repeating-linear-gradient(
-      90deg, transparent, transparent 3px, rgba(0,0,0,0.02) 3px, rgba(0,0,0,0.02) 4px
-    );
-    pointer-events: none;
-    border-radius: 22px;
-  }
-
-  /* Turn indicator */
-  .turn-info {
-    text-align: center;
-    margin-bottom: 20px;
-    position: relative;
-  }
-  .turn-label {
-    font-size: 0.75rem;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: rgba(201,168,76,0.6);
-    margin-bottom: 8px;
-  }
-  .rolls-remaining {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-  }
-  .roll-pip {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: var(--gold);
-    box-shadow: 0 0 8px rgba(201,168,76,0.6);
-    transition: all 0.4s ease;
-  }
-  .roll-pip.used {
-    background: rgba(201,168,76,0.15);
-    box-shadow: none;
-    border: 1px solid rgba(201,168,76,0.2);
-  }
-  .rolls-text {
-    font-size: 0.8rem;
-    color: rgba(245,238,216,0.5);
-    letter-spacing: 0.1em;
-    margin-left: 4px;
-  }
-
-  /* Dice tray */
-  .dice-tray {
-    display: flex;
-    justify-content: center;
-    gap: clamp(8px, 3vw, 16px);
-    margin-bottom: 24px;
-    padding: 20px 10px;
-    background: rgba(0,0,0,0.2);
-    border-radius: 16px;
-    border: 1px solid rgba(0,0,0,0.3);
-    box-shadow: inset 0 2px 8px rgba(0,0,0,0.4);
-    position: relative;
-    flex-wrap: nowrap;
-  }
-
-  /* Die */
-  .die-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-  }
-  .die-svg {
-    width: clamp(54px, 14vw, 74px);
-    height: clamp(54px, 14vw, 74px);
-    border-radius: clamp(8px, 2.5vw, 12px);
-    transition: transform 0.15s, filter 0.15s;
-    user-select: none;
-    filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.5));
-  }
-  .die-wrapper:not(.locked):hover .die-svg {
-    transform: translateY(-3px);
-    filter: drop-shadow(2px 7px 10px rgba(0,0,0,0.6));
-  }
-  .die-wrapper.locked .die-svg {
-    filter: drop-shadow(0 0 6px rgba(201,168,76,0.8)) drop-shadow(2px 4px 6px rgba(0,0,0,0.5));
-  }
-  .die-svg.rolling {
-    animation: diceRoll 0.52s ease-in-out;
-  }
-  @keyframes diceRoll {
-    0%   { transform: rotate(0deg) scale(1); }
-    15%  { transform: rotate(-22deg) scale(1.12); }
-    35%  { transform: rotate(28deg) scale(0.93); }
-    55%  { transform: rotate(-16deg) scale(1.09); }
-    75%  { transform: rotate(10deg) scale(0.97); }
-    90%  { transform: rotate(-4deg) scale(1.02); }
-    100% { transform: rotate(0deg) scale(1); }
-  }
-
-  /* Lock indicator */
-  .lock-label {
-    font-size: 0.65rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: rgba(245,238,216,0.3);
-    transition: all 0.2s;
-    height: 14px;
-  }
-  .die-wrapper.locked .lock-label {
-    color: var(--gold);
-    font-weight: 600;
-  }
-
-  /* Hint text */
-  .hint {
-    text-align: center;
-    font-size: 0.78rem;
-    color: rgba(245,238,216,0.35);
-    letter-spacing: 0.08em;
-    margin-bottom: 16px;
-    font-style: italic;
-    min-height: 16px;
-    transition: opacity 0.3s;
-  }
-
-  /* Buttons */
-  .actions {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    align-items: center;
-  }
-  .btn-roll {
-    background: linear-gradient(135deg, #b8860b 0%, var(--gold) 40%, var(--gold-light) 60%, var(--gold) 100%);
-    color: #1a0e00;
-    font-family: 'Playfair Display', serif;
-    font-size: clamp(1rem, 4vw, 1.25rem);
-    font-weight: 700;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    border: none;
-    border-radius: 50px;
-    padding: 14px 40px;
-    cursor: pointer;
-    box-shadow:
-      0 4px 0 var(--gold-dark),
-      0 6px 20px rgba(201,168,76,0.4),
-      inset 0 1px 0 rgba(255,255,255,0.3);
-    transition: all 0.15s;
-    min-width: 200px;
-    position: relative;
-    overflow: hidden;
-  }
-  .btn-roll::before {
-    content: '';
-    position: absolute;
-    top: 0; left: -100%;
-    width: 60%; height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
-    transform: skewX(-20deg);
-    transition: left 0.4s;
-  }
-  .btn-roll:hover::before { left: 150%; }
-  .btn-roll:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 0 var(--gold-dark), 0 10px 28px rgba(201,168,76,0.5), inset 0 1px 0 rgba(255,255,255,0.3);
-  }
-  .btn-roll:active {
-    transform: translateY(2px);
-    box-shadow: 0 2px 0 var(--gold-dark), 0 3px 10px rgba(201,168,76,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
-  }
-  .btn-roll:disabled {
-    background: linear-gradient(135deg, #4a4a3a 0%, #6a6a52 100%);
-    color: rgba(245,238,216,0.4);
-    box-shadow: 0 2px 0 #333, 0 3px 8px rgba(0,0,0,0.3);
-    cursor: not-allowed;
-    transform: none;
-  }
-  .btn-roll:disabled::before { display: none; }
-
-  .btn-new-turn {
-    background: none;
-    border: 1px solid rgba(201,168,76,0.4);
-    color: var(--gold);
-    font-family: 'Crimson Text', serif;
-    font-size: 0.95rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    padding: 9px 28px;
-    border-radius: 50px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .btn-new-turn:hover {
-    background: rgba(201,168,76,0.1);
-    border-color: var(--gold);
-    box-shadow: 0 0 12px rgba(201,168,76,0.2);
-  }
-
-  /* Status message */
-  .status-msg {
-    text-align: center;
-    font-family: 'Playfair Display', serif;
-    font-size: 1.1rem;
-    color: var(--gold-light);
-    letter-spacing: 0.05em;
-    margin-top: 14px;
-    min-height: 28px;
-    transition: opacity 0.3s;
-  }
-
-  /* Shake indicator */
-  .shake-ring {
-    position: fixed;
-    inset: 0;
-    border-radius: 0;
-    pointer-events: none;
-    z-index: 999;
-    border: 4px solid var(--gold);
-    opacity: 0;
-    transition: opacity 0.1s;
-  }
-  .shake-ring.flash {
-    animation: ringFlash 0.5s ease-out forwards;
-  }
-  @keyframes ringFlash {
-    0%   { opacity: 0.7; }
-    100% { opacity: 0; }
-  }
-
-  /* Turn banner */
-  .turn-banner {
-    text-align: center;
-    margin-bottom: 14px;
-    font-family: 'Crimson Text', serif;
-    font-size: 0.85rem;
-    color: rgba(201,168,76,0.6);
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-  }
-
-  /* Decorative corners */
-  .corner {
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    border-color: rgba(201,168,76,0.3);
-    border-style: solid;
-  }
-  .corner-tl { top: 8px; left: 8px; border-width: 1px 0 0 1px; }
-  .corner-tr { top: 8px; right: 8px; border-width: 1px 1px 0 0; }
-  .corner-bl { bottom: 8px; left: 8px; border-width: 0 0 1px 1px; }
-  .corner-br { bottom: 8px; right: 8px; border-width: 0 1px 1px 0; }
-
-  /* Mobile note */
-  .mobile-note {
-    font-size: 0.72rem;
-    color: rgba(201,168,76,0.4);
-    text-align: center;
-    margin-top: 16px;
-    letter-spacing: 0.1em;
-  }
-
-  @media (max-width: 400px) {
-    .dice-tray { gap: 6px; padding: 14px 6px; }
-    .btn-roll { min-width: 160px; padding: 12px 28px; }
-  }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--felt:#1a4a2e;--felt-light:#205535;--felt-dark:#122d1c;--gold:#c9a84c;--gold-light:#e8c96a;--gold-dark:#8a6a1e;--cream:#f5eed8;--card-bg:#fdfaf3;--card-border:#c8b87a;--section-head:#1a3a2a}
+body{background-color:var(--felt-dark);background-image:radial-gradient(ellipse at 50% 0%,#2a6640 0%,transparent 60%),repeating-linear-gradient(45deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px 12px 60px;font-family:'Crimson Text',serif;color:var(--cream);overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='none'/%3E%3Ccircle cx='1' cy='1' r='0.5' fill='rgba(255,255,255,0.015)'/%3E%3Ccircle cx='3' cy='3' r='0.5' fill='rgba(255,255,255,0.015)'/%3E%3C/svg%3E");pointer-events:none;z-index:0}
+.page{position:relative;z-index:1;width:100%;max-width:900px}
+header{text-align:center;margin-bottom:20px}
+.title-ornament{display:flex;align-items:center;justify-content:center;gap:12px}
+.title-ornament::before,.title-ornament::after{content:'';height:1px;width:50px;background:linear-gradient(to right,transparent,var(--gold))}
+.title-ornament::after{background:linear-gradient(to left,transparent,var(--gold))}
+h1{font-family:'Playfair Display',serif;font-size:clamp(2rem,7vw,3rem);font-weight:900;letter-spacing:.1em;text-transform:uppercase;line-height:1;background:linear-gradient(135deg,var(--gold-light) 0%,var(--gold) 50%,var(--gold-dark) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.subtitle{font-size:.78rem;color:rgba(201,168,76,.55);letter-spacing:.3em;text-transform:uppercase;margin-top:3px}
+#setupScreen{background:radial-gradient(ellipse at 50% 30%,var(--felt-light) 0%,var(--felt) 60%,var(--felt-dark) 100%);border-radius:20px;padding:32px 28px;border:2px solid rgba(201,168,76,.25);box-shadow:0 0 0 6px rgba(0,0,0,.25),0 20px 60px rgba(0,0,0,.5);text-align:center;max-width:420px;margin:0 auto}
+#setupScreen h2{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--gold-light);margin-bottom:6px}
+#setupScreen p{font-size:.9rem;color:rgba(245,238,216,.5);margin-bottom:24px;letter-spacing:.05em}
+.player-inputs{display:flex;flex-direction:column;gap:10px;margin-bottom:24px}
+.player-row{display:flex;align-items:center;gap:10px}
+.player-row label{font-size:.85rem;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;width:70px;text-align:right;flex-shrink:0}
+.player-row input{flex:1;background:rgba(0,0,0,.3);border:1px solid rgba(201,168,76,.3);border-radius:8px;color:var(--cream);font-family:'Crimson Text',serif;font-size:1rem;padding:7px 12px;outline:none;transition:border-color .2s}
+.player-row input:focus{border-color:var(--gold)}
+.player-count-btns{display:flex;justify-content:center;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.count-btn{background:none;border:1px solid rgba(201,168,76,.3);color:rgba(245,238,216,.5);font-family:'Crimson Text',serif;font-size:.9rem;letter-spacing:.1em;padding:5px 16px;border-radius:20px;cursor:pointer;transition:all .2s}
+.count-btn.active{background:linear-gradient(135deg,var(--gold-dark),var(--gold));border-color:var(--gold);color:#1a0e00;font-weight:600}
+.btn-gold{background:linear-gradient(135deg,#b8860b 0%,var(--gold) 40%,var(--gold-light) 60%,var(--gold) 100%);color:#1a0e00;font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;border:none;border-radius:50px;padding:13px 36px;cursor:pointer;box-shadow:0 4px 0 var(--gold-dark),0 6px 20px rgba(201,168,76,.4),inset 0 1px 0 rgba(255,255,255,.3);transition:all .15s;position:relative;overflow:hidden}
+.btn-gold:hover{transform:translateY(-2px);box-shadow:0 6px 0 var(--gold-dark),0 10px 28px rgba(201,168,76,.5)}
+.btn-gold:active{transform:translateY(2px)}
+#gameScreen{display:none;width:100%}
+.dice-area{background:radial-gradient(ellipse at 50% 30%,var(--felt-light) 0%,var(--felt) 60%,var(--felt-dark) 100%);border-radius:20px;padding:20px 16px 18px;border:2px solid rgba(201,168,76,.25);box-shadow:0 0 0 5px rgba(0,0,0,.25),0 16px 40px rgba(0,0,0,.5);margin-bottom:20px;position:relative;overflow:hidden}
+.dice-area::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.015) 3px,rgba(0,0,0,.015) 4px),repeating-linear-gradient(90deg,transparent,transparent 3px,rgba(0,0,0,.015) 3px,rgba(0,0,0,.015) 4px);pointer-events:none;border-radius:18px}
+.corner{position:absolute;width:16px;height:16px;border-color:rgba(201,168,76,.25);border-style:solid}
+.corner-tl{top:7px;left:7px;border-width:1px 0 0 1px}.corner-tr{top:7px;right:7px;border-width:1px 1px 0 0}.corner-bl{bottom:7px;left:7px;border-width:0 0 1px 1px}.corner-br{bottom:7px;right:7px;border-width:0 1px 1px 0}
+.active-banner{text-align:center;margin-bottom:12px}
+.active-name{font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--gold-light);letter-spacing:.05em}
+.active-round{font-size:.75rem;color:rgba(201,168,76,.5);letter-spacing:.25em;text-transform:uppercase;margin-top:2px}
+.rolls-bar{display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:14px}
+.roll-pip{width:12px;height:12px;border-radius:50%;background:var(--gold);box-shadow:0 0 7px rgba(201,168,76,.6);transition:all .3s}
+.roll-pip.used{background:rgba(201,168,76,.12);box-shadow:none;border:1px solid rgba(201,168,76,.2)}
+.rolls-text{font-size:.75rem;color:rgba(245,238,216,.4);letter-spacing:.1em;margin-left:4px}
+.dice-tray{display:flex;justify-content:center;gap:clamp(6px,2.5vw,14px);margin-bottom:14px;padding:16px 8px;background:rgba(0,0,0,.2);border-radius:14px;border:1px solid rgba(0,0,0,.3);box-shadow:inset 0 2px 8px rgba(0,0,0,.4)}
+.die-wrapper{display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.die-svg{width:clamp(50px,13vw,70px);height:clamp(50px,13vw,70px);transition:transform .15s,filter .15s;user-select:none;filter:drop-shadow(2px 4px 5px rgba(0,0,0,.5))}
+.die-wrapper:not(.locked):hover .die-svg{transform:translateY(-3px);filter:drop-shadow(2px 7px 10px rgba(0,0,0,.6))}
+.die-wrapper.locked .die-svg{filter:drop-shadow(0 0 7px rgba(201,168,76,.9)) drop-shadow(2px 4px 5px rgba(0,0,0,.5))}
+.die-svg.rolling{animation:diceRoll .52s ease-in-out}
+@keyframes diceRoll{0%{transform:rotate(0deg) scale(1)}15%{transform:rotate(-22deg) scale(1.12)}35%{transform:rotate(28deg) scale(.93)}55%{transform:rotate(-16deg) scale(1.09)}75%{transform:rotate(10deg) scale(.97)}90%{transform:rotate(-4deg) scale(1.02)}100%{transform:rotate(0deg) scale(1)}}
+.lock-label{font-size:.6rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(245,238,216,.25);transition:all .2s;height:12px}
+.die-wrapper.locked .lock-label{color:var(--gold);font-weight:600}
+.hint{text-align:center;font-size:.75rem;color:rgba(245,238,216,.35);letter-spacing:.07em;font-style:italic;min-height:14px;margin-bottom:14px}
+.dice-actions{display:flex;flex-direction:column;align-items:center;gap:9px}
+.btn-roll{background:linear-gradient(135deg,#b8860b 0%,var(--gold) 40%,var(--gold-light) 60%,var(--gold) 100%);color:#1a0e00;font-family:'Playfair Display',serif;font-size:clamp(.95rem,3.5vw,1.15rem);font-weight:700;letter-spacing:.15em;text-transform:uppercase;border:none;border-radius:50px;padding:12px 36px;cursor:pointer;box-shadow:0 4px 0 var(--gold-dark),0 6px 16px rgba(201,168,76,.4),inset 0 1px 0 rgba(255,255,255,.3);transition:all .15s;min-width:180px;position:relative;overflow:hidden}
+.btn-roll:hover{transform:translateY(-2px);box-shadow:0 6px 0 var(--gold-dark),0 10px 24px rgba(201,168,76,.5)}
+.btn-roll:active{transform:translateY(2px);box-shadow:0 2px 0 var(--gold-dark)}
+.btn-roll:disabled{background:linear-gradient(135deg,#4a4a3a,#6a6a52);color:rgba(245,238,216,.4);box-shadow:0 2px 0 #333;cursor:not-allowed;transform:none}
+.btn-outline{background:none;border:1px solid rgba(201,168,76,.4);color:var(--gold);font-family:'Crimson Text',serif;font-size:.9rem;letter-spacing:.15em;text-transform:uppercase;padding:8px 24px;border-radius:50px;cursor:pointer;transition:all .2s}
+.btn-outline:hover{background:rgba(201,168,76,.1);border-color:var(--gold);box-shadow:0 0 10px rgba(201,168,76,.2)}
+.status-msg{text-align:center;font-family:'Playfair Display',serif;font-size:.95rem;color:var(--gold-light);letter-spacing:.05em;margin-top:10px;min-height:22px}
+.shake-ring{position:fixed;inset:0;pointer-events:none;z-index:999;border:4px solid var(--gold);opacity:0}
+.shake-ring.flash{animation:ringFlash .5s ease-out forwards}
+@keyframes ringFlash{0%{opacity:.7}100%{opacity:0}}
+.mobile-note{font-size:.7rem;color:rgba(201,168,76,.35);text-align:center;margin-top:10px;letter-spacing:.1em}
+.scorecards-section{margin-top:8px}
+.scorecards-label{text-align:center;font-size:.75rem;color:rgba(201,168,76,.5);letter-spacing:.3em;text-transform:uppercase;margin-bottom:12px}
+.player-tabs{display:flex;justify-content:center;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.tab-btn{background:none;border:1px solid rgba(201,168,76,.25);color:rgba(245,238,216,.45);font-family:'Crimson Text',serif;font-size:.85rem;letter-spacing:.08em;padding:5px 16px;border-radius:20px;cursor:pointer;transition:all .2s}
+.tab-btn.active{background:linear-gradient(135deg,var(--gold-dark),var(--gold));border-color:var(--gold);color:#1a0e00;font-weight:600;box-shadow:0 0 10px rgba(201,168,76,.35)}
+.tab-btn:hover:not(.active){border-color:rgba(201,168,76,.6);color:var(--cream)}
+.scorecard{display:none;background:var(--card-bg);border-radius:14px;border:2px solid var(--card-border);box-shadow:0 8px 32px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.8);overflow:hidden;font-family:'Special Elite',monospace;color:#1a1a1a}
+.scorecard.active{display:block}
+.sc-section-head{background:var(--section-head);color:var(--gold-light);font-family:'Playfair Display',serif;font-size:.75rem;letter-spacing:.25em;text-transform:uppercase;padding:7px 12px;text-align:center}
+.sc-row{display:flex;align-items:stretch;border-bottom:1px solid #d4c090}
+.sc-row:last-child{border-bottom:none}
+.sc-cat{flex:1;padding:6px 8px;font-family:'Special Elite',monospace;font-size:clamp(.65rem,2vw,.8rem);color:#2a2a1a;line-height:1.3;border-right:1px solid #d4c090;display:flex;align-items:center}
+.sc-how{width:88px;min-width:70px;padding:4px 6px;font-size:clamp(.52rem,1.5vw,.64rem);color:#5a4a20;line-height:1.25;border-right:1px solid #d4c090;display:flex;align-items:center;font-family:'Crimson Text',serif;font-style:italic}
+.sc-score-cell{width:58px;min-width:46px;display:flex;align-items:center;justify-content:center;background:#fffef5;cursor:pointer;transition:background .15s;position:relative}
+.sc-score-cell:not(.filled):hover{background:#fff9d0}
+.sc-score-cell.filled{background:#f2edd5;cursor:default}
+.sc-score-cell input{width:100%;height:100%;min-height:30px;background:transparent;border:none;outline:none;text-align:center;font-family:'Special Elite',monospace;font-size:clamp(.8rem,2.5vw,1rem);color:#1a1a1a;cursor:pointer;padding:4px 2px}
+.sc-score-cell input:focus{background:#fffacc}
+.sc-score-cell.filled input{color:#1a5c1a;cursor:default;pointer-events:none}
+.sc-total-row{display:flex;align-items:stretch;border-bottom:1px solid #c8b87a;background:#f0e8c8}
+.sc-total-row:last-child{border-bottom:none}
+.sc-total-label{flex:1;padding:6px 8px;font-family:'Playfair Display',serif;font-size:clamp(.65rem,2vw,.76rem);font-weight:700;color:#2a1a0a;letter-spacing:.04em;border-right:1px solid #c8b87a;display:flex;align-items:center}
+.sc-total-how{width:88px;min-width:70px;padding:4px 6px;font-size:clamp(.52rem,1.5vw,.62rem);color:#5a4a20;border-right:1px solid #c8b87a;display:flex;align-items:center;font-family:'Crimson Text',serif;font-style:italic}
+.sc-total-val{width:58px;min-width:46px;display:flex;align-items:center;justify-content:center;background:#e5d9a8;font-family:'Special Elite',monospace;font-size:clamp(.8rem,2.5vw,.92rem);font-weight:bold;color:#2a1a0a;padding:4px 2px;text-align:center}
+.sc-grand{background:var(--section-head)}
+.sc-grand .sc-total-label{color:var(--gold-light);border-color:rgba(201,168,76,.3)}
+.sc-grand .sc-total-how{border-color:rgba(201,168,76,.3);color:rgba(201,168,76,.5)}
+.sc-grand .sc-total-val{background:rgba(0,0,0,.35);color:var(--gold-light);font-size:clamp(.85rem,2.5vw,1rem)}
+.sc-divider{height:3px;background:linear-gradient(to right,var(--felt-dark),var(--gold),var(--felt-dark))}
+.score-suggest{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#1a3a1a;color:var(--gold-light);font-size:.65rem;padding:3px 7px;border-radius:5px;white-space:nowrap;pointer-events:none;z-index:10;border:1px solid var(--gold-dark);display:none;font-family:'Crimson Text',serif}
+.sc-score-cell:not(.filled):hover .score-suggest{display:block}
+.yahtzee-bonus-row{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:#f5efcc;border-bottom:1px solid #d4c090;gap:8px}
+.yb-label{font-size:clamp(.6rem,1.8vw,.72rem);color:#2a2a1a;font-family:'Special Elite',monospace;line-height:1.3}
+.yb-chips{display:flex;gap:5px;flex-wrap:wrap;flex-shrink:0}
+.yb-chip{width:28px;height:28px;border-radius:50%;border:2px solid #c8a84c;background:#fffef0;display:flex;align-items:center;justify-content:center;font-size:.55rem;color:#5a4a10;cursor:pointer;transition:all .15s;font-family:'Special Elite',monospace;text-align:center;line-height:1}
+.yb-chip.marked{background:#1a5c1a;border-color:#1a5c1a;color:#d4f0d4}
+.new-game-bar{text-align:center;margin-top:24px}
+@media(max-width:480px){.sc-how{width:70px;min-width:60px}.sc-score-cell{width:46px;min-width:38px}.sc-total-how{width:70px;min-width:60px}.sc-total-val{width:46px;min-width:38px}}
 </style>
 </head>
 <body>
 <div class="shake-ring" id="shakeRing"></div>
-<div class="wrapper">
-  <header>
-    <div class="title-ornament">
-      <h1>Yahtzee</h1>
+<div class="page">
+<header>
+  <div class="title-ornament"><h1>Yahtzee</h1></div>
+  <div class="subtitle">Casino Dice Roller &amp; Scorecard</div>
+</header>
+
+<!-- SETUP -->
+<div id="setupScreen">
+  <h2>How many players?</h2>
+  <p>Choose your count and enter names to begin</p>
+  <div class="player-count-btns">
+    <button class="count-btn" onclick="setCount(1)">1</button>
+    <button class="count-btn active" onclick="setCount(2)">2</button>
+    <button class="count-btn" onclick="setCount(3)">3</button>
+    <button class="count-btn" onclick="setCount(4)">4</button>
+  </div>
+  <div class="player-inputs" id="playerInputs"></div>
+  <button class="btn-gold" onclick="startGame()">Start Game</button>
+</div>
+
+<!-- GAME -->
+<div id="gameScreen">
+  <div class="dice-area">
+    <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+    <div class="active-banner">
+      <div class="active-name" id="activeName">Player 1's Turn</div>
+      <div class="active-round" id="activeRound">Round 1 of 13</div>
     </div>
-    <div class="subtitle">Casino Dice Roller</div>
-  </header>
-
-  <div class="table-surface">
-    <div class="corner corner-tl"></div>
-    <div class="corner corner-tr"></div>
-    <div class="corner corner-bl"></div>
-    <div class="corner corner-br"></div>
-
-    <!-- Round indicator -->
-    <div class="turn-banner" id="turnBanner">
-      <span id="roundLabel">Round 1 of 13</span>
+    <div class="rolls-bar">
+      <div class="roll-pip" id="pip0"></div>
+      <div class="roll-pip" id="pip1"></div>
+      <div class="roll-pip" id="pip2"></div>
+      <span class="rolls-text" id="rollsText">3 rolls left</span>
     </div>
-
-    <!-- Roll indicators -->
-    <div class="turn-info">
-      <div class="turn-label">Rolls Remaining</div>
-      <div class="rolls-remaining">
-        <div class="roll-pip" id="pip0"></div>
-        <div class="roll-pip" id="pip1"></div>
-        <div class="roll-pip" id="pip2"></div>
-        <span class="rolls-text" id="rollsText">3 rolls left</span>
-      </div>
+    <div class="dice-tray">
+      <div class="die-wrapper" id="dw0" onclick="toggleLock(0)"><svg class="die-svg" id="die0" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"></svg><div class="lock-label" id="ll0">tap to lock</div></div>
+      <div class="die-wrapper" id="dw1" onclick="toggleLock(1)"><svg class="die-svg" id="die1" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"></svg><div class="lock-label" id="ll1">tap to lock</div></div>
+      <div class="die-wrapper" id="dw2" onclick="toggleLock(2)"><svg class="die-svg" id="die2" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"></svg><div class="lock-label" id="ll2">tap to lock</div></div>
+      <div class="die-wrapper" id="dw3" onclick="toggleLock(3)"><svg class="die-svg" id="die3" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"></svg><div class="lock-label" id="ll3">tap to lock</div></div>
+      <div class="die-wrapper" id="dw4" onclick="toggleLock(4)"><svg class="die-svg" id="die4" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"></svg><div class="lock-label" id="ll4">tap to lock</div></div>
     </div>
-
-    <!-- Dice -->
-    <div class="dice-tray" id="diceTray">
-      <div class="die-wrapper" id="dw0" onclick="toggleLock(0)">
-        <svg class="die-svg" id="die0" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"></svg>
-        <div class="lock-label" id="ll0">tap to lock</div>
-      </div>
-      <div class="die-wrapper" id="dw1" onclick="toggleLock(1)">
-        <svg class="die-svg" id="die1" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"></svg>
-        <div class="lock-label" id="ll1">tap to lock</div>
-      </div>
-      <div class="die-wrapper" id="dw2" onclick="toggleLock(2)">
-        <svg class="die-svg" id="die2" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"></svg>
-        <div class="lock-label" id="ll2">tap to lock</div>
-      </div>
-      <div class="die-wrapper" id="dw3" onclick="toggleLock(3)">
-        <svg class="die-svg" id="die3" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"></svg>
-        <div class="lock-label" id="ll3">tap to lock</div>
-      </div>
-      <div class="die-wrapper" id="dw4" onclick="toggleLock(4)">
-        <svg class="die-svg" id="die4" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"></svg>
-        <div class="lock-label" id="ll4">tap to lock</div>
-      </div>
-    </div>
-
     <div class="hint" id="hint">Shake your device or press Roll to begin!</div>
-
-    <div class="actions">
+    <div class="dice-actions">
       <button class="btn-roll" id="rollBtn" onclick="rollDice()">🎲 Roll Dice</button>
-      <button class="btn-new-turn" id="newTurnBtn" onclick="newTurn()" style="display:none">New Turn</button>
+      <button class="btn-outline" id="endTurnBtn" onclick="endTurn()" style="display:none">End Turn → Next Player</button>
     </div>
-
     <div class="status-msg" id="statusMsg"></div>
   </div>
+  <div class="mobile-note" id="mobileNote">📱 Shake device to roll</div>
 
-  <div class="mobile-note" id="mobileNote">📱 Shake your device to roll!</div>
+  <div class="scorecards-section">
+    <div class="scorecards-label">Scorecards</div>
+    <div class="player-tabs" id="playerTabs"></div>
+    <div id="scorecardsContainer"></div>
+  </div>
+  <div class="new-game-bar">
+    <button class="btn-outline" onclick="newGame()">↩ New Game</button>
+  </div>
+</div>
 </div>
 
 <script>
-  // State
-  const MAX_ROUNDS = 13;
-  let currentRound = 1;
-  let rollsLeft = 3;
-  let locked = [false, false, false, false, false];
-  let values = [1, 1, 1, 1, 1];
-  let hasRolled = false;
-  let isRolling = false;
+const MAX_ROUNDS=13;
+let numPlayers=2,playerNames=[],currentPlayer=0,currentRound=1;
+let rollsLeft=3,locked=[false,false,false,false,false];
+let diceValues=[1,1,1,1,1],hasRolled=false,isRolling=false;
+let scores=[];
+const UPPER=['aces','twos','threes','fours','fives','sixes'];
+const LOWER=['three_kind','four_kind','full_house','sm_straight','lg_straight','yahtzee','chance'];
 
-  // Per-player round tracking
-  const pipMap = {
-    a: 0, b: 1, c: 2, d: 3, e: 4, f: 5
-  };
+function freshScore(){return{aces:null,twos:null,threes:null,fours:null,fives:null,sixes:null,three_kind:null,four_kind:null,full_house:null,sm_straight:null,lg_straight:null,yahtzee:null,chance:null,yahtzee_bonus:0};}
 
-  // SVG pip positions for each face — real casino dice layout
-  // Grid uses 3 columns (L=28, C=50, R=72) and 3 rows (T=28, M=50, B=72)
-  const L = 28, C = 50, R = 72;
-  const T = 28, M = 50, B = 72;
-  const PIP_R = 9; // pip radius
-
-  const dieFaces = {
-    1: [[C, M]],
-    2: [[L, T], [R, B]],
-    3: [[L, T], [C, M], [R, B]],
-    4: [[L, T], [R, T], [L, B], [R, B]],
-    5: [[L, T], [R, T], [C, M], [L, B], [R, B]],
-    6: [[L, T], [R, T], [L, M], [R, M], [L, B], [R, B]]
-  };
-
-  function renderDie(idx, val, isLocked) {
-    const svg = document.getElementById('die' + idx);
-    const locked = isLocked !== undefined ? isLocked : document.getElementById('dw' + idx).classList.contains('locked');
-
-    // Die body fill — crisp white with subtle gradient
-    const bodyFill = locked ? 'url(#lockedGrad)' : 'url(#dieGrad)';
-    const strokeColor = locked ? '#c9a84c' : '#d4c9a8';
-    const strokeWidth = locked ? '2.5' : '1.5';
-
-    let svgContent = `
-      <defs>
-        <linearGradient id="dieGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:#ffffff"/>
-          <stop offset="100%" style="stop-color:#f0e8d0"/>
-        </linearGradient>
-        <linearGradient id="lockedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:#fffef0"/>
-          <stop offset="100%" style="stop-color:#f5e8b0"/>
-        </linearGradient>
-        <filter id="pipShadow" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="1" stdDeviation="0.8" flood-color="rgba(0,0,0,0.35)"/>
-        </filter>
-        <filter id="dieShadow">
-          <feDropShadow dx="2" dy="3" stdDeviation="3" flood-color="rgba(0,0,0,0.4)"/>
-        </filter>
-      </defs>
-      <rect x="4" y="4" width="92" height="92" rx="14" ry="14"
-        fill="${bodyFill}" stroke="${strokeColor}" stroke-width="${strokeWidth}"
-        filter="url(#dieShadow)"/>
-      <rect x="4" y="4" width="92" height="46" rx="14" ry="14"
-        fill="rgba(255,255,255,0.25)" stroke="none"/>
-    `;
-
-    // Draw pips
-    const positions = dieFaces[val] || [];
-    const pipColor = (val === 1) ? '#cc2222' : '#1a1a1a';  // red center pip for 1, like real dice
-
-    positions.forEach(([px, py]) => {
-      svgContent += `<circle cx="${px}" cy="${py}" r="${PIP_R}"
-        fill="${pipColor}" filter="url(#pipShadow)"/>`;
-      // Subtle highlight on pip
-      svgContent += `<circle cx="${px - 2.5}" cy="${py - 2.5}" r="${PIP_R * 0.3}"
-        fill="rgba(255,255,255,0.18)"/>`;
-    });
-
-    // Gold lock border overlay
-    if (locked) {
-      svgContent += `<rect x="3" y="3" width="94" height="94" rx="15" ry="15"
-        fill="none" stroke="#c9a84c" stroke-width="3" opacity="0.8"/>`;
-    }
-
-    svg.innerHTML = svgContent;
+function setCount(n){
+  numPlayers=n;
+  document.querySelectorAll('.count-btn').forEach((b,i)=>b.classList.toggle('active',i===n-1));
+  buildInputs();
+}
+function buildInputs(){
+  const c=document.getElementById('playerInputs');c.innerHTML='';
+  for(let i=0;i<numPlayers;i++){
+    const row=document.createElement('div');row.className='player-row';
+    row.innerHTML=`<label>P${i+1}</label><input type="text" id="pname${i}" placeholder="Player ${i+1}" value="${playerNames[i]||''}" maxlength="16">`;
+    c.appendChild(row);
   }
+}
+setCount(2);
 
-  function updateRollUI() {
-    for (let i = 0; i < 3; i++) {
-      const pip = document.getElementById('pip' + i);
-      pip.classList.toggle('used', i >= rollsLeft);
-    }
-    const texts = ['No rolls left', '1 roll left', '2 rolls left', '3 rolls left'];
-    document.getElementById('rollsText').textContent = texts[rollsLeft];
+function startGame(){
+  playerNames=[];
+  for(let i=0;i<numPlayers;i++){const v=document.getElementById('pname'+i).value.trim();playerNames.push(v||'Player '+(i+1));}
+  scores=playerNames.map(()=>freshScore());
+  currentPlayer=0;currentRound=1;rollsLeft=3;locked=[false,false,false,false,false];diceValues=[1,1,1,1,1];hasRolled=false;isRolling=false;
+  document.getElementById('setupScreen').style.display='none';
+  document.getElementById('gameScreen').style.display='block';
+  buildPlayerTabs();buildAllScorecards();
+  for(let i=0;i<5;i++)renderDie(i,1,false);
+  updateActivePlayer();updateRollUI();setupMotion();
+}
+function newGame(){
+  document.getElementById('setupScreen').style.display='block';
+  document.getElementById('gameScreen').style.display='none';
+  buildInputs();
+}
 
-    const btn = document.getElementById('rollBtn');
-    btn.disabled = rollsLeft === 0;
-    if (rollsLeft === 0) {
-      btn.textContent = '🎲 No Rolls Left';
-      document.getElementById('hint').textContent = 'Score your hand, then move to next player.';
-      document.getElementById('newTurnBtn').style.display = 'block';
-    } else if (rollsLeft === 3) {
-      btn.textContent = '🎲 Roll Dice';
-    } else {
-      btn.textContent = '🎲 Roll Again';
+// ── DICE SVG ──
+const L=28,C=50,R=72,T=28,M=50,B=72,PR=9;
+const dieFaces={1:[[C,M]],2:[[L,T],[R,B]],3:[[L,T],[C,M],[R,B]],4:[[L,T],[R,T],[L,B],[R,B]],5:[[L,T],[R,T],[C,M],[L,B],[R,B]],6:[[L,T],[R,T],[L,M],[R,M],[L,B],[R,B]]};
+function renderDie(idx,val,isLocked){
+  const svg=document.getElementById('die'+idx);
+  const pc=val===1?'#cc2222':'#1a1a1a';
+  const bf=isLocked?`url(#lg${idx})`:`url(#dg${idx})`;
+  const st=isLocked?'#c9a84c':'#d4c9a8',sw=isLocked?'2.5':'1.5';
+  let s=`<defs><linearGradient id="dg${idx}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#ffffff"/><stop offset="100%" style="stop-color:#f0e8d0"/></linearGradient><linearGradient id="lg${idx}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#fffef0"/><stop offset="100%" style="stop-color:#f5e8b0"/></linearGradient><filter id="ps${idx}"><feDropShadow dx="0" dy="1" stdDeviation="0.8" flood-color="rgba(0,0,0,0.35)"/></filter><filter id="ds${idx}"><feDropShadow dx="2" dy="3" stdDeviation="3" flood-color="rgba(0,0,0,0.4)"/></filter></defs><rect x="4" y="4" width="92" height="92" rx="14" ry="14" fill="${bf}" stroke="${st}" stroke-width="${sw}" filter="url(#ds${idx})"/><rect x="4" y="4" width="92" height="46" rx="14" ry="14" fill="rgba(255,255,255,0.22)" stroke="none"/>`;
+  (dieFaces[val]||[]).forEach(([px,py])=>{
+    s+=`<circle cx="${px}" cy="${py}" r="${PR}" fill="${pc}" filter="url(#ps${idx})"/>`;
+    s+=`<circle cx="${px-2.5}" cy="${py-2.5}" r="${PR*0.28}" fill="rgba(255,255,255,0.18)"/>`;
+  });
+  if(isLocked)s+=`<rect x="3" y="3" width="94" height="94" rx="15" ry="15" fill="none" stroke="#c9a84c" stroke-width="3" opacity="0.8"/>`;
+  svg.innerHTML=s;
+}
+
+// ── DICE LOGIC ──
+function rollDice(){
+  if(rollsLeft===0||isRolling)return;
+  isRolling=true;rollsLeft--;hasRolled=true;
+  document.getElementById('hint').textContent=rollsLeft>0?'Tap dice to lock before re-rolling.':'';
+  const rolling=[];
+  for(let i=0;i<5;i++){
+    if(!locked[i]){
+      diceValues[i]=Math.ceil(Math.random()*6);rolling.push(i);
+      const d=document.getElementById('die'+i);d.classList.remove('rolling');void d.offsetWidth;d.classList.add('rolling');
     }
   }
-
-  function rollDice() {
-    if (rollsLeft === 0 || isRolling) return;
-
-    isRolling = true;
-    rollsLeft--;
-    hasRolled = true;
-
-    document.getElementById('hint').textContent = rollsLeft > 0 ? 'Tap dice to lock them in before re-rolling.' : '';
-
-    // Animate and update unlocked dice
-    const rollingDice = [];
-    for (let i = 0; i < 5; i++) {
-      if (!locked[i]) {
-        values[i] = Math.ceil(Math.random() * 6);
-        rollingDice.push(i);
-        const die = document.getElementById('die' + i);
-        die.classList.remove('rolling');
-        void die.offsetWidth;
-        die.classList.add('rolling');
-      }
-    }
-
-    setTimeout(() => {
-      rollingDice.forEach(i => {
-        renderDie(i, values[i]);
-        document.getElementById('die' + i).classList.remove('rolling');
-      });
-      isRolling = false;
-      updateRollUI();
-
-      // Check if no rolls left
-      if (rollsLeft === 0) {
-        document.getElementById('statusMsg').textContent = 'Mark your score on your scorecard!';
-        document.getElementById('newTurnBtn').style.display = 'block';
-      } else {
-        document.getElementById('statusMsg').textContent = '';
-      }
-    }, 520);
-
-    updateRollUI();
-    document.getElementById('newTurnBtn').style.display = rollsLeft === 0 ? 'block' : 'none';
-  }
-
-  function toggleLock(idx) {
-    if (!hasRolled || isRolling) return;
-    if (rollsLeft === 0) return;
-    locked[idx] = !locked[idx];
-    const wrapper = document.getElementById('dw' + idx);
-    wrapper.classList.toggle('locked', locked[idx]);
-    const ll = document.getElementById('ll' + idx);
-    ll.textContent = locked[idx] ? '✦ locked' : 'tap to lock';
-    renderDie(idx, values[idx], locked[idx]);
-
-    const lockedCount = locked.filter(Boolean).length;
-    if (lockedCount === 5) {
-      document.getElementById('hint').textContent = 'All dice locked! Unlock some or end your turn.';
-    }
-  }
-
-  function newTurn() {
-    currentRound++;
-
-    if (currentRound > MAX_ROUNDS) {
-      endGame();
-      return;
-    }
-
-    // Reset state
-    rollsLeft = 3;
-    locked = [false, false, false, false, false];
-    hasRolled = false;
-    values = [1, 1, 1, 1, 1];
-
-    // Reset dice display
-    for (let i = 0; i < 5; i++) {
-      document.getElementById('dw' + i).classList.remove('locked');
-      document.getElementById('ll' + i).textContent = 'tap to lock';
-      renderDie(i, 1, false);
-    }
-
-    document.getElementById('roundLabel').textContent = `Round ${currentRound} of ${MAX_ROUNDS}`;
-    document.getElementById('hint').textContent = 'Shake your device or press Roll to begin!';
-    document.getElementById('statusMsg').textContent = '';
-    document.getElementById('newTurnBtn').style.display = 'none';
-    document.getElementById('rollBtn').textContent = '🎲 Roll Dice';
-
-    updateRollUI();
-  }
-
-  function endGame() {
-    document.getElementById('roundLabel').textContent = '🏆 Game Over — All 13 Rounds Complete';
-    document.getElementById('statusMsg').textContent = 'Tally your scorecards for the winner!';
-    document.getElementById('rollBtn').disabled = true;
-    document.getElementById('rollBtn').textContent = '🎲 Game Complete';
-    document.getElementById('newTurnBtn').style.display = 'none';
-    document.getElementById('hint').textContent = '';
-  }
-
-  function updateRollUI() {
-    for (let i = 0; i < 3; i++) {
-      const pip = document.getElementById('pip' + i);
-      pip.classList.toggle('used', i >= rollsLeft);
-    }
-    const texts = ['No rolls left', '1 roll left', '2 rolls left', '3 rolls left'];
-    document.getElementById('rollsText').textContent = texts[rollsLeft];
-
-    const btn = document.getElementById('rollBtn');
-    btn.disabled = rollsLeft === 0 || isRolling;
-
-    if (rollsLeft === 0) {
-      btn.textContent = '🎲 No Rolls Left';
-      document.getElementById('hint').textContent = 'Score your hand, then move to the next player.';
-      document.getElementById('newTurnBtn').style.display = 'block';
-    } else if (!hasRolled) {
-      btn.textContent = '🎲 Roll Dice';
-    } else {
-      btn.textContent = '🎲 Roll Again';
-    }
-  }
-
-  // Shake detection
-  let lastShake = 0;
-  let lastX = null, lastY = null, lastZ = null;
-
-  function handleMotion(e) {
-    const acc = e.accelerationIncludingGravity;
-    if (!acc) return;
-    const { x, y, z } = acc;
-    if (lastX === null) { lastX = x; lastY = y; lastZ = z; return; }
-    const delta = Math.abs(x - lastX) + Math.abs(y - lastY) + Math.abs(z - lastZ);
-    lastX = x; lastY = y; lastZ = z;
-    const now = Date.now();
-    if (delta > 25 && now - lastShake > 800) {
-      lastShake = now;
-      if (rollsLeft > 0 && !isRolling) {
-        triggerShakeEffect();
-        rollDice();
-      }
-    }
-  }
-
-  function triggerShakeEffect() {
-    const ring = document.getElementById('shakeRing');
-    ring.classList.remove('flash');
-    void ring.offsetWidth;
-    ring.classList.add('flash');
-  }
-
-  // Request motion permission on iOS 13+
-  function setupMotion() {
-    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-      // iOS 13+ — need user gesture
-      document.getElementById('rollBtn').addEventListener('click', function requestOnce() {
-        DeviceMotionEvent.requestPermission().then(state => {
-          if (state === 'granted') {
-            window.addEventListener('devicemotion', handleMotion);
-            document.getElementById('mobileNote').textContent = '📱 Shake to roll — enabled!';
-          }
-        }).catch(() => {});
-        document.getElementById('rollBtn').removeEventListener('click', requestOnce);
-      }, { once: true });
-    } else if (typeof DeviceMotionEvent !== 'undefined') {
-      window.addEventListener('devicemotion', handleMotion);
-    } else {
-      document.getElementById('mobileNote').style.display = 'none';
-    }
-  }
-
-  // Render initial dice faces
-  for (let i = 0; i < 5; i++) renderDie(i, 1, false);
-  setupMotion();
+  setTimeout(()=>{
+    rolling.forEach(i=>{renderDie(i,diceValues[i],false);document.getElementById('die'+i).classList.remove('rolling');});
+    isRolling=false;updateRollUI();updateScoreSuggestions();
+    if(rollsLeft===0){document.getElementById('statusMsg').textContent='Score your hand below, then end your turn.';document.getElementById('endTurnBtn').style.display='block';}
+  },530);
   updateRollUI();
+}
+function toggleLock(idx){
+  if(!hasRolled||isRolling||rollsLeft===0)return;
+  locked[idx]=!locked[idx];
+  document.getElementById('dw'+idx).classList.toggle('locked',locked[idx]);
+  document.getElementById('ll'+idx).textContent=locked[idx]?'✦ locked':'tap to lock';
+  renderDie(idx,diceValues[idx],locked[idx]);
+}
+function updateRollUI(){
+  for(let i=0;i<3;i++)document.getElementById('pip'+i).classList.toggle('used',i>=rollsLeft);
+  const t=['No rolls left','1 roll left','2 rolls left','3 rolls left'];
+  document.getElementById('rollsText').textContent=t[rollsLeft];
+  const btn=document.getElementById('rollBtn');
+  btn.disabled=rollsLeft===0||isRolling;
+  if(rollsLeft===0)btn.textContent='🎲 No Rolls Left';
+  else if(!hasRolled)btn.textContent='🎲 Roll Dice';
+  else btn.textContent='🎲 Roll Again';
+}
+function updateActivePlayer(){
+  document.getElementById('activeName').textContent=playerNames[currentPlayer]+"'s Turn";
+  document.getElementById('activeRound').textContent=`Round ${currentRound} of ${MAX_ROUNDS}`;
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',i===currentPlayer));
+  showScorecard(currentPlayer);
+}
+function endTurn(){
+  currentPlayer=(currentPlayer+1)%numPlayers;
+  if(currentPlayer===0)currentRound++;
+  if(currentRound>MAX_ROUNDS){endGame();return;}
+  rollsLeft=3;locked=[false,false,false,false,false];diceValues=[1,1,1,1,1];hasRolled=false;
+  for(let i=0;i<5;i++){document.getElementById('dw'+i).classList.remove('locked');document.getElementById('ll'+i).textContent='tap to lock';renderDie(i,1,false);}
+  document.getElementById('hint').textContent='Shake your device or press Roll to begin!';
+  document.getElementById('statusMsg').textContent='';
+  document.getElementById('endTurnBtn').style.display='none';
+  clearScoreSuggestions();updateActivePlayer();updateRollUI();
+}
+function endGame(){
+  document.getElementById('activeName').textContent='🏆 Game Over!';
+  document.getElementById('activeRound').textContent='All 13 rounds complete — tally your scores!';
+  document.getElementById('rollBtn').disabled=true;document.getElementById('rollBtn').textContent='🎲 Game Complete';
+  document.getElementById('endTurnBtn').style.display='none';document.getElementById('hint').textContent='';
+}
+
+// ── SCORECARD BUILD ──
+function buildPlayerTabs(){
+  const tabs=document.getElementById('playerTabs');tabs.innerHTML='';
+  playerNames.forEach((name,i)=>{
+    const b=document.createElement('button');b.className='tab-btn'+(i===0?' active':'');b.textContent=name;b.onclick=()=>showScorecard(i);tabs.appendChild(b);
+  });
+}
+function showScorecard(idx){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
+  document.querySelectorAll('.scorecard').forEach((c,i)=>c.classList.toggle('active',i===idx));
+}
+function buildAllScorecards(){
+  const container=document.getElementById('scorecardsContainer');container.innerHTML='';
+  playerNames.forEach((name,pi)=>container.appendChild(buildScorecard(pi,name)));
+}
+
+function scRow(pi,cat,label,how,max){
+  return `<div class="sc-row">
+    <div class="sc-cat">${label}</div>
+    <div class="sc-how">${how}</div>
+    <div class="sc-score-cell" id="cell_${pi}_${cat}" onclick="focusCell(${pi},'${cat}')">
+      <div class="score-suggest" id="sug_${pi}_${cat}"></div>
+      <input type="number" id="inp_${pi}_${cat}" min="0" max="${max}" onchange="saveScore(${pi},'${cat}',this.value)" onblur="saveScore(${pi},'${cat}',this.value)">
+    </div>
+  </div>`;
+}
+
+function buildScorecard(pi,name){
+  const div=document.createElement('div');
+  div.className='scorecard'+(pi===0?' active':'');div.id='sc'+pi;
+  div.innerHTML=`
+  <div class="sc-section-head">⬆ Upper Section — ${name}</div>
+  ${scRow(pi,'aces','&#9856;&nbsp; Aces','Count only Aces',5)}
+  ${scRow(pi,'twos','&#9857;&nbsp; Twos','Count only Twos',10)}
+  ${scRow(pi,'threes','&#9858;&nbsp; Threes','Count only Threes',15)}
+  ${scRow(pi,'fours','&#9859;&nbsp; Fours','Count only Fours',20)}
+  ${scRow(pi,'fives','&#9860;&nbsp; Fives','Count only Fives',25)}
+  ${scRow(pi,'sixes','&#9861;&nbsp; Sixes','Count only Sixes',30)}
+  <div class="sc-total-row">
+    <div class="sc-total-label">Total Score</div>
+    <div class="sc-total-how"></div>
+    <div class="sc-total-val" id="tot_${pi}_upper">—</div>
+  </div>
+  <div class="sc-total-row">
+    <div class="sc-total-label">Bonus</div>
+    <div class="sc-total-how">Score 35 if ≥ 63</div>
+    <div class="sc-total-val" id="tot_${pi}_bonus">—</div>
+  </div>
+  <div class="sc-total-row">
+    <div class="sc-total-label">Total ▶ Upper</div>
+    <div class="sc-total-how"></div>
+    <div class="sc-total-val" id="tot_${pi}_upperTotal">—</div>
+  </div>
+  <div class="sc-divider"></div>
+  <div class="sc-section-head">⬇ Lower Section — ${name}</div>
+  ${scRow(pi,'three_kind','3 of a Kind','Add total of all dice',30)}
+  ${scRow(pi,'four_kind','4 of a Kind','Add total of all dice',30)}
+  ${scRow(pi,'full_house','Full House','Score 25',25)}
+  ${scRow(pi,'sm_straight','Sm. Straight<br><small style="font-size:.7em;opacity:.7">Sequence of 4</small>','Score 30',30)}
+  ${scRow(pi,'lg_straight','Lg. Straight<br><small style="font-size:.7em;opacity:.7">Sequence of 5</small>','Score 40',40)}
+  ${scRow(pi,'yahtzee','YAHTZEE<br><small style="font-size:.7em;opacity:.7">5 of a kind</small>','Score 50',50)}
+  ${scRow(pi,'chance','Chance','Add total of all dice',30)}
+  <div class="yahtzee-bonus-row">
+    <div class="yb-label">YAHTZEE BONUS<br><span style="font-size:.65em;color:#5a4a20;font-style:italic">Score 100 per extra Yahtzee</span></div>
+    <div class="yb-chips" id="ybchips_${pi}">
+      <div class="yb-chip" id="ybc_${pi}_0" onclick="toggleYB(${pi},0)">✓</div>
+      <div class="yb-chip" id="ybc_${pi}_1" onclick="toggleYB(${pi},1)">✓</div>
+      <div class="yb-chip" id="ybc_${pi}_2" onclick="toggleYB(${pi},2)">✓</div>
+      <div class="yb-chip" id="ybc_${pi}_3" onclick="toggleYB(${pi},3)">✓</div>
+    </div>
+  </div>
+  <div class="sc-total-row">
+    <div class="sc-total-label">Total ▶ Lower</div>
+    <div class="sc-total-how"></div>
+    <div class="sc-total-val" id="tot_${pi}_lower">—</div>
+  </div>
+  <div class="sc-total-row">
+    <div class="sc-total-label">Total ▶ Upper</div>
+    <div class="sc-total-how"></div>
+    <div class="sc-total-val" id="tot_${pi}_upperCopy">—</div>
+  </div>
+  <div class="sc-total-row sc-grand">
+    <div class="sc-total-label">Grand Total</div>
+    <div class="sc-total-how"></div>
+    <div class="sc-total-val" id="tot_${pi}_grand">—</div>
+  </div>`;
+  return div;
+}
+
+// ── SCORING ──
+function focusCell(pi,cat){
+  const cell=document.getElementById('cell_'+pi+'_'+cat);
+  if(cell.classList.contains('filled'))return;
+  document.getElementById('inp_'+pi+'_'+cat).focus();
+}
+function saveScore(pi,cat,val){
+  if(!hasRolled)return;
+  const v=val===''?null:parseInt(val);
+  if(v===null||isNaN(v)||v<0)return;
+  scores[pi][cat]=v;
+  const cell=document.getElementById('cell_'+pi+'_'+cat);
+  const inp=document.getElementById('inp_'+pi+'_'+cat);
+  inp.value=v;cell.classList.add('filled');inp.readOnly=true;
+  updateTotals(pi);
+  document.querySelectorAll('.tab-btn')[pi].style.borderColor='rgba(201,168,76,.5)';
+}
+function toggleYB(pi,idx){
+  const chip=document.getElementById('ybc_'+pi+'_'+idx);chip.classList.toggle('marked');
+  let total=0;for(let i=0;i<4;i++)if(document.getElementById('ybc_'+pi+'_'+i).classList.contains('marked'))total+=100;
+  scores[pi].yahtzee_bonus=total;updateTotals(pi);
+}
+function updateTotals(pi){
+  const s=scores[pi];
+  let upperRaw=0;UPPER.forEach(k=>{if(s[k]!==null)upperRaw+=s[k];});
+  const allUpper=UPPER.every(k=>s[k]!==null);
+  const bonus=allUpper?(upperRaw>=63?35:0):0;
+  const upperTotal=upperRaw+bonus;
+  let lowerRaw=0;LOWER.forEach(k=>{if(s[k]!==null)lowerRaw+=s[k];});
+  lowerRaw+=s.yahtzee_bonus;
+  const grand=upperTotal+lowerRaw;
+  document.getElementById('tot_'+pi+'_upper').textContent=upperRaw>0?upperRaw:'—';
+  document.getElementById('tot_'+pi+'_bonus').textContent=allUpper?bonus:'—';
+  document.getElementById('tot_'+pi+'_upperTotal').textContent=allUpper?upperTotal:'—';
+  document.getElementById('tot_'+pi+'_lower').textContent=lowerRaw>0?lowerRaw:'—';
+  document.getElementById('tot_'+pi+'_upperCopy').textContent=allUpper?upperTotal:'—';
+  document.getElementById('tot_'+pi+'_grand').textContent=(upperRaw>0||lowerRaw>0)?grand:'—';
+}
+
+// ── SCORE SUGGESTIONS ──
+function calcSug(cat,dice){
+  const counts=new Array(7).fill(0);dice.forEach(d=>counts[d]++);
+  const sum=dice.reduce((a,b)=>a+b,0);
+  const u=[...new Set(dice)].sort((a,b)=>a-b);
+  switch(cat){
+    case 'aces':return counts[1]*1;case 'twos':return counts[2]*2;case 'threes':return counts[3]*3;
+    case 'fours':return counts[4]*4;case 'fives':return counts[5]*5;case 'sixes':return counts[6]*6;
+    case 'three_kind':return counts.some(c=>c>=3)?sum:0;
+    case 'four_kind':return counts.some(c=>c>=4)?sum:0;
+    case 'full_house':{const h3=counts.some(c=>c===3),h2=counts.some(c=>c===2);return(h3&&h2)?25:0;}
+    case 'sm_straight':{const seqs=[[1,2,3,4],[2,3,4,5],[3,4,5,6]];return seqs.some(sq=>sq.every(v=>u.includes(v)))?30:0;}
+    case 'lg_straight':{const s1=JSON.stringify(u)==='[1,2,3,4,5]',s2=JSON.stringify(u)==='[2,3,4,5,6]';return(s1||s2)?40:0;}
+    case 'yahtzee':return counts.some(c=>c===5)?50:0;
+    case 'chance':return sum;
+  }
+  return 0;
+}
+function updateScoreSuggestions(){
+  if(!hasRolled)return;
+  [...UPPER,...LOWER].forEach(cat=>{
+    playerNames.forEach((_,pi)=>{
+      const sug=document.getElementById('sug_'+pi+'_'+cat);
+      const cell=document.getElementById('cell_'+pi+'_'+cat);
+      if(!sug||cell.classList.contains('filled'))return;
+      const v=calcSug(cat,diceValues);
+      sug.textContent=v>0?'→ '+v:'→ 0';
+    });
+  });
+}
+function clearScoreSuggestions(){document.querySelectorAll('[id^="sug_"]').forEach(el=>el.textContent='');}
+
+// ── SHAKE ──
+let lastShake=0,lastX=null,lastY=null,lastZ=null;
+function handleMotion(e){
+  const acc=e.accelerationIncludingGravity;if(!acc)return;
+  const{x,y,z}=acc;if(lastX===null){lastX=x;lastY=y;lastZ=z;return;}
+  const delta=Math.abs(x-lastX)+Math.abs(y-lastY)+Math.abs(z-lastZ);
+  lastX=x;lastY=y;lastZ=z;
+  const now=Date.now();
+  if(delta>25&&now-lastShake>800){lastShake=now;if(rollsLeft>0&&!isRolling){flashShake();rollDice();}}
+}
+function flashShake(){const r=document.getElementById('shakeRing');r.classList.remove('flash');void r.offsetWidth;r.classList.add('flash');}
+function setupMotion(){
+  if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function'){
+    document.getElementById('rollBtn').addEventListener('click',function req(){DeviceMotionEvent.requestPermission().then(s=>{if(s==='granted')window.addEventListener('devicemotion',handleMotion);}).catch(()=>{});},{once:true});
+  }else if(typeof DeviceMotionEvent!=='undefined'){
+    window.addEventListener('devicemotion',handleMotion);
+  }else{
+    document.getElementById('mobileNote').style.display='none';
+  }
+}
 </script>
 </body>
 </html>
